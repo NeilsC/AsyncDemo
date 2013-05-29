@@ -1,5 +1,4 @@
 ﻿using System;
-using System.IO;
 using System.Threading.Tasks;
 
 using Client.Async.ImageService;
@@ -34,25 +33,25 @@ namespace Client.Async
 
         private static void Main()
         {
-            DateTime startTime = DateTime.Now;
+            var startTime = DateTime.Now;
             var settings = new Settings();
             var helper = new Helper(settings);
-            int recordCount = 0;
+            var recordCount = 0;
 
-            using (StreamWriter writer = helper.GetOutputWriter())
+            using (var writer = helper.GetOutputWriter())
             using (var imageService = new ImageServiceClient())
             {
                 writer.WriteLine(Image.GetHeaderString());
 
                 Console.WriteLine("Getting image IDs");
-                long[] imageIds = imageService.GetAllUserImageIds("neils");
+                var imageIds = imageService.GetAllUserImageIds("neils");
 
-                foreach (long imageId in imageIds)
+                foreach (var imageId in imageIds)
                 {
-                    Tuple<Image, string> results = AcquireImage(imageService, imageId);
+                    var results = AcquireImage(imageService, imageId);
 
-                    Image imageMetadata = results.Item1;
-                    string image = results.Item2;
+                    var imageMetadata = results.Item1;
+                    var image = results.Item2;
 
                     helper.WriteImageFile(image, imageMetadata.FileName);
 
@@ -70,7 +69,7 @@ namespace Client.Async
 
             Console.WriteLine("Done.");
 
-            TimeSpan elapsed = DateTime.Now - startTime;
+            var elapsed = DateTime.Now - startTime;
             Console.WriteLine("Elapsed time: {0}", elapsed);
 #if DEBUG
             Console.Write("<Enter> to quit.");
