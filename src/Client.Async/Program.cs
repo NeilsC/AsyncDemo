@@ -11,12 +11,21 @@ namespace Client.Async
 {
     internal class Program
     {
+        private struct ImageDetails
+        {
+            public string ImageBytes;
+
+            public Image Metadata;
+        }
         #region Methods
 
-        private static Tuple<Image, string> AcquireImage(IImageService imageService, long imageId)
+        private static async Task<ImageDetails> AcquireImage(IImageService imageService, long imageId)
         {
-            return new Tuple<Image, string>(
-                GetMetadataAsync(imageService, imageId).Result, DownloadImage(imageService, imageId).Result);
+            return new ImageDetails
+                       {
+                           ImageBytes = await DownloadImage(imageService, imageId),
+                           Metadata = await GetMetadataAsync(imageService, imageId)
+                       };
         }
 
         private static async Task<string> DownloadImage(IImageService imageService, long imageId)
@@ -48,10 +57,10 @@ namespace Client.Async
 
                 foreach (var imageId in imageIds)
                 {
-                    var results = AcquireImage(imageService, imageId);
+                    var task = AcquireImage(imageService, imageId);
 
-                    var imageMetadata = results.Item1;
-                    var image = results.Item2;
+                    var imageMetadata = task.Result.Metadata;
+                    var image = task.Result.ImageBytes;
 
                     helper.WriteImageFile(image, imageMetadata.FileName);
 
