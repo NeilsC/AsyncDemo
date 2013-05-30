@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 using Client.Async.ImageService;
@@ -45,32 +46,36 @@ namespace Client.Async
             var startTime = DateTime.Now;
             var settings = new Settings();
             var helper = new Helper(settings);
-            var recordCount = 0;
+            var imageList = new List<ImageDetails>();
 
+            long[] imageIds;
             using (var writer = helper.GetOutputWriter())
             using (var imageService = new ImageServiceClient())
             {
                 writer.WriteLine(Image.GetHeaderString());
 
                 Console.WriteLine("Getting image IDs");
-                var imageIds = imageService.GetAllUserImageIds("neils");
+                imageIds = imageService.GetAllUserImageIds("neils");
 
                 foreach (var imageId in imageIds)
                 {
                     var task = AcquireImage(imageService, imageId);
 
-                    var imageMetadata = task.Result.Metadata;
-                    var image = task.Result.ImageBytes;
-
-                    helper.WriteImageFile(image, imageMetadata.FileName);
-
-                    writer.WriteLine(imageMetadata);
-
-                    recordCount++;
+                    imageList.Add(task.Result);                                       
                 }
             }
 
-            Console.WriteLine("{0} records written to file.", recordCount);
+            using (var writer = helper.GetOutputWriter())
+            {
+                writer.WriteLine(Image.GetHeaderString());
+                foreach (var image in imageList)
+                {
+                    helper.WriteImageFile(image.ImageBytes, image.Metadata.FileName);
+                    writer.WriteLine(image.Metadata);
+                }                
+            }
+
+            Console.WriteLine("{0} images processed.", imageList.Count);
             Console.WriteLine("Creating zip file.");
 
             helper.WriteZipFile();
