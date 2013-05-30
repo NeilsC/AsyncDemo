@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 using Client.Async.ImageService;
@@ -11,61 +14,107 @@ namespace Client.Async
 {
     internal class Program
     {
+        struct ImageBytesAndMetadata
+        {
+            public string ImageBytes;
+
+            public Image Metadata;
+        }
+
+        private static readonly ConcurrentQueue<ImageBytesAndMetadata> Data =
+            new ConcurrentQueue<ImageBytesAndMetadata>();
         #region Methods
 
-        private static Tuple<Image, string> AcquireImage(IImageService imageService, long imageId)
+        private static async Task<string> DownloadImage(long imageId)
         {
-            return new Tuple<Image, string>(
-                GetMetadataAsync(imageService, imageId).Result, DownloadImage(imageService, imageId).Result);
+            var threadId = AppDomain.GetCurrentThreadId();
+            Console.WriteLine("[{1}] Downloading image with ID {0}", imageId, threadId);
+            
+            using (var client = new ImageServiceClient())
+            {
+                return await client.DownloadImageAsync(imageId);
+            }
         }
 
-        private static async Task<string> DownloadImage(IImageService imageService, long imageId)
+        private static async Task<Image> GetMetadata(long imageId)
         {
-            Console.WriteLine("Downloading image ({0})", imageId);
-            return await imageService.DownloadImageAsync(imageId);
+            var threadId = AppDomain.GetCurrentThreadId();
+            Console.WriteLine("[{1}] Getting image metadata with ID {0}", imageId, threadId);
+
+            using (var client = new ImageServiceClient())
+            {
+                return await client.GetMetadataAsync(imageId);
+            }
         }
 
-        private static async Task<Image> GetMetadataAsync(IImageService imageService, long imageId)
+        private static async Task<ImageBytesAndMetadata> GetMetaDataAndDownloadImage(long imageId)
         {
-            Console.WriteLine("Getting image metadata");
-            return await imageService.GetMetadataAsync(imageId);
+            return new ImageBytesAndMetadata
+                       {
+                           ImageBytes = await DownloadImage(imageId),
+                           Metadata = await GetMetadata(imageId)
+                       };
         }
 
+        private static void AddDataToDictionary(long[] imageIds)
+        {
+            var tasks = new List<Task>();
+
+            foreach (var imageId in imageIds)
+            {
+                var task = new Task(
+                    async () =>
+                        { 
+                            var result = await GetMetaDataAndDownloadImage(imageId);
+                            Data.Enqueue(result);
+                        }
+                    );
+
+                task.Start();
+                tasks.Add(task);                
+            }
+
+            Task.WaitAll(tasks.ToArray());
+        }
+
+        private static void WriteMetadata(Helper helper)
+        {
+            var threadId = AppDomain.GetCurrentThreadId();
+            Console.WriteLine("[{0}] Writing csv file", threadId);
+
+            using (var writer = helper.GetOutputWriter())
+            {
+                writer.WriteLine(Image.GetHeaderString());
+                bool success;
+                do
+                {
+                    ImageBytesAndMetadata record;
+                    success = Data.TryDequeue(out record);
+                    writer.WriteLine(record.Metadata);
+                }
+                while (success);
+            }            
+        }
+    
         private static void Main()
         {
             var startTime = DateTime.Now;
             var settings = new Settings();
             var helper = new Helper(settings);
-            var recordCount = 0;
 
-            using (var writer = helper.GetOutputWriter())
-            using (var imageService = new ImageServiceClient())
+            long[] imageIds;
+            using (var client = new ImageServiceClient())
             {
-                writer.WriteLine(Image.GetHeaderString());
-
                 Console.WriteLine("Getting image IDs");
-                var imageIds = imageService.GetAllUserImageIds("neils");
-
-                foreach (var imageId in imageIds)
-                {
-                    var results = AcquireImage(imageService, imageId);
-
-                    var imageMetadata = results.Item1;
-                    var image = results.Item2;
-
-                    helper.WriteImageFile(image, imageMetadata.FileName);
-
-                    writer.WriteLine(imageMetadata);
-
-                    recordCount++;
-                }
+                imageIds = client.GetAllUserImageIds("neils");
             }
-
-            Console.WriteLine("{0} records written to file.", recordCount);
-            Console.WriteLine("Creating zip file.");
-
-            helper.WriteZipFile();
-            helper.Cleanup();
+            
+            AddDataToDictionary(imageIds);
+            
+            Task.Run(() => WriteMetadata(helper));
+            
+            //helper.WriteZipFile();
+            //helper.Cleanup();
 
             Console.WriteLine("Done.");
 
