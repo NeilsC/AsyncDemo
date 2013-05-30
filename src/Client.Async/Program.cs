@@ -7,29 +7,34 @@ using Client.Common;
 using Client.Common.Config;
 
 using Entities;
+using System.Linq;
 
 namespace Client.Async
 {
     internal class Program
     {
-        private struct ImageDetails
+        private class ImageDetails
         {
             public string ImageBytes;
 
             public Image Metadata;
         }
-        #region Methods
 
+        private static List<ImageDetails> _imageDetails = new List<ImageDetails>(); 
+
+        #region Methods
+        
         private static async Task<ImageDetails> AcquireImage(IImageService imageService, long imageId)
         {
-            return new ImageDetails
-                       {
-                           ImageBytes = await DownloadImage(imageService, imageId),
-                           Metadata = await GetMetadataAsync(imageService, imageId)
-                       };
+            return
+                new ImageDetails
+                    {
+                        ImageBytes = await DownloadImageAsync(imageService, imageId),
+                        Metadata = await GetMetadataAsync(imageService, imageId)
+                    };
         }
 
-        private static async Task<string> DownloadImage(IImageService imageService, long imageId)
+        private static async Task<string> DownloadImageAsync(IImageService imageService, long imageId)
         {
             Console.WriteLine("Downloading image ({0})", imageId);
             return await imageService.DownloadImageAsync(imageId);
@@ -45,37 +50,37 @@ namespace Client.Async
         {
             var startTime = DateTime.Now;
             var settings = new Settings();
-            var helper = new Helper(settings);
-            var imageList = new List<ImageDetails>();
+            var helper = new Helper(settings);            
+            var tasks = new List<Task<ImageDetails>>();
 
-            long[] imageIds;
+            // Get the ID's
+            var imageIds = GetImageIds();
+
+            // Create the Tasks
+            
+            foreach (var imageId in imageIds)
+            {
+                var task = new Task<ImageDetails>(() => AcquireImage(new ImageServiceClient(), imageId).Result);
+                task.Start();
+                tasks.Add(task);
+            }
+
+            // wait for the tasks
+            Task.WaitAll(tasks.ToArray());
+
+            // write out the files
             using (var writer = helper.GetOutputWriter())
-            using (var imageService = new ImageServiceClient())
             {
                 writer.WriteLine(Image.GetHeaderString());
-
-                Console.WriteLine("Getting image IDs");
-                imageIds = imageService.GetAllUserImageIds("neils");
-
-                foreach (var imageId in imageIds)
+              
+                foreach (var task in tasks)
                 {
-                    var task = AcquireImage(imageService, imageId);
-
-                    imageList.Add(task.Result);                                       
+                    helper.WriteImageFile(task.Result.ImageBytes, task.Result.Metadata.FileName);
+                    writer.WriteLine(task.Result.Metadata);
                 }
             }
 
-            using (var writer = helper.GetOutputWriter())
-            {
-                writer.WriteLine(Image.GetHeaderString());
-                foreach (var image in imageList)
-                {
-                    helper.WriteImageFile(image.ImageBytes, image.Metadata.FileName);
-                    writer.WriteLine(image.Metadata);
-                }                
-            }
-
-            Console.WriteLine("{0} images processed.", imageList.Count);
+            Console.WriteLine("{0} images processed.", tasks.Count);
             Console.WriteLine("Creating zip file.");
 
             helper.WriteZipFile();
@@ -89,6 +94,17 @@ namespace Client.Async
             Console.Write("<Enter> to quit.");
             Console.ReadLine();
 #endif
+        }
+
+        private static long[] GetImageIds()
+        {
+            long[] imageIds;
+            using (var imageService = new ImageServiceClient())
+            {
+                Console.WriteLine("Getting image IDs");
+                imageIds = imageService.GetAllUserImageIds("neils");
+            }
+            return imageIds;
         }
 
         #endregion

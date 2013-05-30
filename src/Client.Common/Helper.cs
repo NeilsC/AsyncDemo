@@ -107,7 +107,7 @@ namespace Client.Common
 
         public void WriteImageFile(string data, string fileName)
         {
-            string filePath = Path.Combine(this._settings.ScratchDirectory, "img", fileName);
+            string filePath = Path.Combine(this._settings.OutputDirectory, this._settings.ScratchDirectory, "img", fileName);
             byte[] bytes = Convert.FromBase64String(data);
             var fileStream = new FileStream(filePath, FileMode.Create);
             fileStream.Write(bytes, 0, bytes.Length);
