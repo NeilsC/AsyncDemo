@@ -7,7 +7,6 @@ using Client.Common;
 using Client.Common.Config;
 
 using Entities;
-using System.Linq;
 
 namespace Client.Async
 {
@@ -19,8 +18,6 @@ namespace Client.Async
 
             public Image Metadata;
         }
-
-        private static List<ImageDetails> _imageDetails = new List<ImageDetails>(); 
 
         #region Methods
         
@@ -36,13 +33,13 @@ namespace Client.Async
 
         private static async Task<string> DownloadImageAsync(IImageService imageService, long imageId)
         {
-            Console.WriteLine("Downloading image ({0})", imageId);
+            Console.WriteLine("[{1}] Downloading image with ID ({0})", imageId, AppDomain.GetCurrentThreadId());
             return await imageService.DownloadImageAsync(imageId);
         }
 
         private static async Task<Image> GetMetadataAsync(IImageService imageService, long imageId)
         {
-            Console.WriteLine("Getting image metadata");
+            Console.WriteLine("[{1}] Getting image metadata with ID ({0})", imageId, AppDomain.GetCurrentThreadId());
             return await imageService.GetMetadataAsync(imageId);
         }
 
