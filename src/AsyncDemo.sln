@@ -13,6 +13,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client.Async", "Client.Asyn
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client.NoAsync", "Client.NoAsync\Client.NoAsync.csproj", "{EBC9245F-D1A4-438A-ABA2-1A975DCBD178}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client.MVC", "MvcApplication1\Client.MVC.csproj", "{8EC31E1C-74ED-41D6-8F8B-5ED88077B690}"
+	ProjectSection(ProjectDependencies) = postProject
+		{3C4FF870-C56B-4F5E-9DCD-0359231C967B} = {3C4FF870-C56B-4F5E-9DCD-0359231C967B}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -43,6 +48,10 @@ Global
 		{EBC9245F-D1A4-438A-ABA2-1A975DCBD178}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EBC9245F-D1A4-438A-ABA2-1A975DCBD178}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EBC9245F-D1A4-438A-ABA2-1A975DCBD178}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8EC31E1C-74ED-41D6-8F8B-5ED88077B690}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8EC31E1C-74ED-41D6-8F8B-5ED88077B690}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8EC31E1C-74ED-41D6-8F8B-5ED88077B690}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8EC31E1C-74ED-41D6-8F8B-5ED88077B690}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
